@@ -1,70 +1,61 @@
 const fs = require('fs');
+import csv from 'fast-csv';
 const promisify = require('util').promisify;
-// const DirWatcher = require('./dirwatcher');
 
-const readdir = promisify(fs.readdir);
+const readDir = promisify(fs.readdir);
 const readFile = promisify(fs.readFile);
 
-function csvToJson(file) {
-    const contents = file.contents;
-    const json = [];
-    const rows = contents.split('\n');
-    const headings = rows.splice(0, 1)[0].split(',');
-    // console.log(headings);
-
-    const newContents = rows.map((row, index) => {
-        const rowArr = row.split(/,|(".+")/).filter(Boolean);
-        const obj = {};
-        headings.map((heading, index) => {
-            //console.log(heading);
-            obj[heading] = rowArr[index];
-        });
-        return obj;
-    });
-
-
-    return JSON.stringify({
-        fileName: file.fileName,
-        contents: newContents,
-    });
-}
-
-
 class Importer {
-    constructor(dirwatcher) { // dirwatcher instance
-        this.init(dirwatcher);
-        this.bindEvents();
+    constructor(dirWatcher) {
+        this.init(dirWatcher);
     }
 
-    init(dirwatcher) {
-        this.dir = {};
-        this.dirwatcher = dirwatcher;
+    init(dirWatcher) {
+        this.files = {};
+        this.dirWatcher = dirWatcher;
     }
 
-    bindEvents() {
-        this.dirwatcher.on('dirwatcher:changed', (path, fileName) => {
-            readdir(path)
-                .then(files => Promise.all(files.map(file => {
-                    return readFile(`${path}/${file}`, 'utf-8').then(d => ({ fileName: file, contents: d }));
-                })))
-                .then(data => {
-                    this.dir[path] = data;
-                })
-                .catch(e => console.log(e));
+    listen(eventName) {
+        this.dirWatcher.on(eventName, (path, fileName) => {
+            this.import('data').then(files => {
+                this.files = files;
+                console.log('files: ', files);
+            });
+            // this.files = this.importSync('data');
         });
     }
 
     import(path) {
-        return new Promise(resolve => {
-            setImmediate(() => {
-                let dir;
-                this.dir[path] ? resolve(this.dir[path].map(csvToJson)) : resolve(JSON.stringify([]))
-            });
-        });
+        return readDir(path)
+            .then(fileNames => Promise.all(fileNames
+                .map(file => new Promise((resolve, reject) => {
+                    const csvFile = [];
+                    const csvStream = fs.createReadStream(`${path}/${file}`);
+
+                    csv.fromStream(csvStream, { headers: true })
+                        .on('data', data => csvFile.push(data))
+                        .on('end', () => resolve(csvFile))
+                        .on('error', error => reject(error));
+                }))))
+            .then(files => JSON.stringify(files));
     }
 
     importSync(path) {
-        return this.dir[path] ? this.dir[path].map(csvToJson) : JSON.stringify([]);
+        const loadedFiles = [];
+        const fileNames = fs.readdirSync(path);
+        fileNames.forEach((file) => {
+            const csvFile = fs.readFileSync(`${path}/${file}`)
+                .toString()
+                .split('\n')
+                .map((csvString) => {
+                    const [id, name, brand, company, price, isbn] = csvString.split(',');
+                    return {
+                        id, name, brand, company, price, isbn,
+                    };
+                });
+            loadedFiles.push(csvFile);
+        });
+        return JSON.stringify(loadedFiles);
     }
 }
 

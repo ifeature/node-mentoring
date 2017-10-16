@@ -1,41 +1,24 @@
 'use strict';
 
 const fs = require('fs');
-const appName = require('./config/json').name;
+const cp = require('child_process');
+const appName = require('./config/config').name;
 const models = require('./models');
 const DirWatcher = require('./modules/dirwatcher');
+const EVENTS = require('./modules/dirwatcher').EVENTS;
 const Importer = require('./modules/importer');
 
 const DATA_PATH = './data';
-const dirwatcher = new DirWatcher();
-const importer = new Importer(dirwatcher);
+const dirWatcher = new DirWatcher();
+const importer = new Importer(dirWatcher);
 
-dirwatcher.watch(DATA_PATH);
-
-setTimeout(() => {
-    console.log(importer.importSync('./data'));
-    importer.import(DATA_PATH).then(res => {
-        // console.log(res);
-        // for testing
-        fs.writeFile('./out/test.json', res, (err, res) => {
-            if (err) {
-                return console.log(err);
-            }
-            console.log(res);
-        });
-    });
-}, 5000);
-
-
-
-
-
-
-
-
+dirWatcher.watch(DATA_PATH);
+importer.listen(EVENTS.CHANGED);
 
 console.log(appName);
 
 const user = new models.UserModel();
 const product = new models.ProductModel();
 
+const args = process.argv.slice(4);
+const child = cp.fork('./utils/streams.js', args);

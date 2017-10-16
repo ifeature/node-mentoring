@@ -18,7 +18,17 @@
     "nodemon": "^1.12.1"
   },
   "nodemonConfig": {
-    "ignore": ["out/*"],
+    "ignore": [
+      "out/*"
+    ],
     "delay": "300"
+  },
+  "dependencies": {
+    "csvtojson": "^1.1.9",
+    "fast-csv": "^2.4.1",
+    "minimist": "^1.2.0",
+    "request": "^2.83.0",
+    "split": "^1.0.1",
+    "through2": "^2.0.3"
   }
 }

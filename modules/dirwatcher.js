@@ -1,6 +1,10 @@
 const fs = require('fs');
 const EventEmitter = require('events').EventEmitter;
 
+const EVENTS = Object.freeze({
+    CHANGED: 'dirwatcher:changed',
+});
+
 function debounce(fn, delay) {
     let delayed = false;
     return function(...args) {
@@ -23,10 +27,10 @@ function getFilename(filename) {
 class DirWatcher extends EventEmitter {
     watch(path, delay) {
         fs.watch(path, { recursive: true, }, debounce((eventType, filename) => {
-            // console.log('!!!! ', filename);
-            this.emit('dirwatcher:changed', path, getFilename(filename));
+            this.emit(EVENTS.CHANGED, path, getFilename(filename));
         }, delay));
     }
 }
 
 module.exports = DirWatcher;
+module.exports.EVENTS = EVENTS;
