@@ -1,8 +1,7 @@
 html {
     width: 100%;
     height: 100%;
-}
-div.image{margin-bottom:20px;overflow:hidden}
+}div.image{margin-bottom:20px;overflow:hidden}
 div.image img{display:block}
 div.image small{display:block}
 div.textimage div.image{float:left;margin-bottom:8px !important}

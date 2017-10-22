@@ -2,6 +2,7 @@
 
 const promisify = require('util').promisify;
 const fs = require('fs');
+const stream = require('stream');
 const readDir = promisify(fs.readdir);
 const writeFile = promisify(fs.writeFile);
 const through = require('through2');
@@ -9,9 +10,9 @@ const csv = require('csvtojson');
 const request = require('request');
 
 const HELP = 'help';
-const ACTION ='action';
-const FILE ='file';
-const PATH ='path';
+const ACTION = 'action';
+const FILE = 'file';
+const PATH = 'path';
 
 const argv = require('minimist')(process.argv.slice(2), {
     alias: {
@@ -44,7 +45,7 @@ function transformUpperCase() {
 function transformCSV(path) {
     fs.createReadStream(path)
         .pipe(through((chunk, encoding, next) => {
-            csv().fromString(chunk.toString()).on('json',(json)=> {
+            csv().fromString(chunk.toString()).on('json', (json) => {
                 this.push(JSON.stringify(json));
             });
 
@@ -69,26 +70,34 @@ function transformCSVFile(path) {
 function bundleCSS(directory) {
     const output = `${directory}/bundle.css`;
     const CSS = 'https://www.epam.com/etc/clientlibs/foundation/main.min.fc69c13add6eae57cd247a91c7e26a15.css';
-    const result = [];
+
+    function write(buffer, encoding, next) {
+        this.push(buffer.toString());
+        next();
+    }
+
+    function end(done) {
+        done();
+    }
 
     readDir(directory)
         .then(fileNames => Promise.all(
             fileNames.map(file => new Promise((resolve, reject) => {
-                const stream = fs.createReadStream(`${directory}/${file}`).pipe(through((chunk, encoding, next) => {
-                    result.push(chunk.toString());
-                    next();
-                    resolve();
-                }));
-
-                stream.on('error', reject).on('end',resolve);
+                return fs.createReadStream(`${directory}/${file}`)
+                    .pipe(through(write, end))
+                    .pipe(fs.createWriteStream(output))
+                    .on('error', reject)
+                    .on('finish', resolve);
             }))
         ))
         .then(() => {
             return fetchFile(CSS);
         })
         .then(data => {
-            result.push(data);
-            return writeFile(output, result.join('\n'));
+            const readable = new stream.Readable();
+            readable._read = function() {};
+            readable.push(Buffer.from(data, 'utf-8'));
+            readable.pipe(fs.createWriteStream(output, { flags: 'a'}));
         })
         .catch(error => {
             console.log(error);
@@ -118,8 +127,7 @@ function fetchFile(fileName) {
 function processAction(action, file, path, help) {
     if ((!action && !file && !help) || help) return printHelpMessage();
 
-    console.log("ACTION");
-    switch(action) {
+    switch (action) {
         case 'io':
             return inputOutput(file);
         case 'transform-uppercase':
