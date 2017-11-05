@@ -26,8 +26,15 @@
   "dependencies": {
     "csvtojson": "^1.1.9",
     "express": "^4.16.2",
+    "express-session": "^1.15.6",
     "fast-csv": "^2.4.1",
+    "jsonwebtoken": "^8.1.0",
     "minimist": "^1.2.0",
+    "passport": "^0.4.0",
+    "passport-facebook": "^2.1.1",
+    "passport-google-oauth": "^1.0.0",
+    "passport-local": "^1.0.0",
+    "passport-twitter": "^1.0.4",
     "request": "^2.83.0",
     "split": "^1.0.1",
     "through2": "^2.0.3"
