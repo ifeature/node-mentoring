@@ -21,13 +21,13 @@ function end(done) {
 const server = http.createServer((req, res) => {
     res.statusCode = 200;
     res.setHeader('Content-Type', 'text/html');
-    fs.createReadStream('./index.html')
+    fs.createReadStream('./index.html44')
+        .on('error', () => {
+          res.statusCode = 500;
+          res.end('Internal server error');
+        })
         .pipe(through(write, end))
         .pipe(res)
-        .on('error', () => {
-            res.statusCode = 500;
-            res.end('Internal server error');
-        });
 });
 
 server.listen(port, hostname, () => {
