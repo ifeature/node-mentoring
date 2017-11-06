@@ -23,7 +23,11 @@ const server = http.createServer((req, res) => {
     res.setHeader('Content-Type', 'text/html');
     fs.createReadStream('./index.html')
         .pipe(through(write, end))
-        .pipe(res);
+        .pipe(res)
+      .on('error', () => {
+        res.statusCode = 500;
+        res.end('Internal server error');
+      });
 });
 
 server.listen(port, hostname, () => {
