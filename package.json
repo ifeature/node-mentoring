@@ -35,7 +35,10 @@
     "passport-google-oauth": "^1.0.0",
     "passport-local": "^1.0.0",
     "passport-twitter": "^1.0.4",
+    "pg": "^7.4.0",
     "request": "^2.83.0",
+    "sequelize": "^4.22.6",
+    "sequelize-cli": "^3.0.0",
     "split": "^1.0.1",
     "through2": "^2.0.3"
   }

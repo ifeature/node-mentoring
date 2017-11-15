@@ -11,7 +11,16 @@ function createRequireAuth(config) {
                if (err) {
                    res.json({ success: false, message: 'Failed to authenticate token.' });
                } else {
-                   // find user by subject
+                   /**
+                    * Find user by subject
+                    *
+                    * In our app it is not necessary to patch the Request by user,
+                    * we won't use that information, but, it can be really handy.
+                    *
+                    * For instance, if we're logged in user make such kind of request
+                    * /api/products/reviews
+                    * he might be want to retrieve all reviews, that have been written by her
+                    */
                    req.user = {
                        email: decoded.sub
                    };

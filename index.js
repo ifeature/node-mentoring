@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const cp = require('child_process');
-const appName = require('./config/config').name;
+const appName = require('./config/app').name;
 const models = require('./models');
 const DirWatcher = require('./modules/dirwatcher');
 const EVENTS = require('./modules/dirwatcher').EVENTS;

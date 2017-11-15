@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
+const Sequelize = require('sequelize');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const FacebookStrategy = require('passport-facebook').Strategy;
@@ -10,6 +11,72 @@ const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
 const requireAuth = require('../middlewares/requireAuth');
 const products = require('../products.json');
 const users = require('../users.json');
+
+console.log('??????? ', process.env);
+
+const sequelize = new Sequelize('postgres://bob:mypass@172.17.0.2:5432/mydb');
+const sync = () => sequelize.sync({force: true});
+
+const User = sequelize.define('User', {
+    email: Sequelize.STRING,
+    username: Sequelize.STRING,
+});
+
+const Product = sequelize.define('Product', {
+    name: Sequelize.STRING,
+});
+
+const Review = sequelize.define('Review', {
+    review: Sequelize.TEXT,
+});
+
+Review.belongsTo(Product); // foreignKey = ProductId
+Review.belongsTo(User); // foreignKey = UserId
+Product.hasMany(Review);
+
+const seed = () => {
+    return sync().then(() => {
+        let user1;
+        let user2;
+
+        let product1;
+        let product2;
+
+        return Promise.all([
+            User.create({email: 'hasr@mailinator.com', username: 'hasr'}),
+            User.create({email: 'hasra@mailinator.com', username: 'hasra'}),
+        ]).then(result => {
+            user1 = result[0].get();
+            user2 = result[1].get();
+
+            return Promise.all([
+                Product.create({name: 'Product 1'}),
+                Product.create({name: 'Product 2'}),
+            ]);
+        }).then(result => {
+            product1 = result[0].get();
+            product2 = result[1].get();
+
+            Review.create({
+                review: 'Some review...',
+                UserId: user1.id,
+                ProductId: product1.id
+            });
+            Review.create({
+                review: 'Another long review...',
+                UserId: user2.id,
+                ProductId: product2.id,
+            });
+        });
+    });
+};
+
+seed();
+
+sequelize.authenticate()
+    .then(() => {
+        console.log('Connection has been established successfully.');
+    });
 
 const user = {
     email: 'admin@example.com',
@@ -21,7 +88,7 @@ const config = {
 };
 
 const generateToken = (user) => {
-  return jwt.sign({ sub: user.email, iat: new Date().getTime() }, config.secret, { expiresIn: 100 });
+    return jwt.sign({sub: user.email, iat: new Date().getTime()}, config.secret, {expiresIn: 100});
 };
 
 const FACEBOOK_APP_ID = '1845831708763522';
@@ -37,7 +104,6 @@ passport.use(new FacebookStrategy({
     clientID: FACEBOOK_APP_ID,
     clientSecret: FACEBOOK_APP_SECRET,
     callbackURL: 'http://localhost:8080/auth/facebook/callback',
-    // profileFields: ['emails']
 }, (accessToken, refreshToken, profile, done) => {
     console.log(accessToken, refreshToken, profile);
     done(null, user);
@@ -65,26 +131,39 @@ passport.use(new LocalStrategy({
     usernameField: 'email',
     passwordField: 'username'
 }, (email, username, done) => {
-    if (!email || email !== user.email || !username || username !== user.username) {
-        done(null, false, 'Bad username/password combination');
+    if (!email || !username) {
+        done(null, false, 'Email and Username should not be empty.');
     } else {
-        done(null, user);
+        User.findOne({ where: {
+            email: {
+                [Sequelize.Op.eq]: email,
+            }
+        }, raw: true }).then(user => {
+            if (!user) {
+                done(null, false, 'Bad username/password combination');
+            } else {
+                done(null, user);
+            }
+        });
     }
 }));
 
 module.exports = (router) => {
-    router.get('/auth/facebook', passport.authenticate('facebook', { session: false }));
-    router.get('/auth/facebook/callback', passport.authenticate('facebook', { session: false }), (req, res) => {
+    router.get('/auth/facebook', passport.authenticate('facebook', {session: false}));
+    router.get('/auth/facebook/callback', passport.authenticate('facebook', {session: false}), (req, res) => {
         res.send('Hello, FB auth');
     });
 
-    router.get('/auth/twitter', passport.authenticate('twitter', { session: false }));
-    router.get('/auth/twitter/callback', passport.authenticate('twitter', { session: false }), (req, res) => {
+    router.get('/auth/twitter', passport.authenticate('twitter', {session: false}));
+    router.get('/auth/twitter/callback', passport.authenticate('twitter', {session: false}), (req, res) => {
         res.send('Hello, TWITTER auth');
     });
 
-    router.get('/auth/google', passport.authenticate('google',  { scope: ['https://www.googleapis.com/auth/plus.login'], session: false }));
-    router.get('/auth/google/callback', passport.authenticate('google', { session: false }), (req, res) => {
+    router.get('/auth/google', passport.authenticate('google', {
+        scope: ['https://www.googleapis.com/auth/plus.login'],
+        session: false
+    }));
+    router.get('/auth/google/callback', passport.authenticate('google', {session: false}), (req, res) => {
         res.send('Hello, GOOGLE auth');
     });
 
@@ -109,7 +188,7 @@ module.exports = (router) => {
         }
     });
 
-    router.post('/authenticate', passport.authenticate('local', { session: false }), (req, res, next) => {
+    router.post('/authenticate', passport.authenticate('local', {session: false}), (req, res, next) => {
         res.json({
             code: 200,
             message: 'OK',
@@ -124,11 +203,15 @@ module.exports = (router) => {
     });
 
     router.get('/api/users', requireAuth(config), (req, res, next) => {
-        res.json(users);
+        User.findAll({raw: true}).then(users => {
+            res.json(users);
+        });
     });
 
     router.get('/api/products', requireAuth(config), (req, res, next) => {
-        res.json(products);
+        Product.findAll({raw: true}).then(products => {
+            res.json(products);
+        });
     });
 
     router.post('/api/products', (req, res, next) => {
@@ -138,8 +221,10 @@ module.exports = (router) => {
     });
 
     router.param('id', (req, res, next, id) => {
-        req.product = products.find(_ => _.id === +id);
-        next();
+        Product.findById(id, {attributes: ['id', 'name'], raw: true}).then(product => {
+            req.product = product;
+            next();
+        });
     });
 
     router.get('/api/products/:id', (req, res, next) => {
@@ -147,7 +232,13 @@ module.exports = (router) => {
     });
 
     router.get('/api/products/:id/reviews', (req, res, next) => {
-        res.json(req.product.reviews);
+        Review.find({
+            where: {id: {[Sequelize.Op.eq]: req.params.id}},
+            attributes: ['id', 'review'],
+            raw: true
+        }).then(review => {
+            res.json(review);
+        });
     });
 
     return router;
