@@ -1,0 +1,18 @@
+[
+  {
+    "reviews": [
+      {
+        "author": "hasr",
+        "review": "Some review..."
+      }
+    ]
+  },
+  {
+    "reviews": [
+      {
+        "author": "hasra",
+        "review": "Another review..."
+      }
+    ]
+  }
+]

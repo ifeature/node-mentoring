@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Brest",
+    "country": "Belarus",
+    "capital": false,
+    "location": {
+      "lat": 52.097621,
+      "long": 23.734050
+    }
+  },
+  {
+    "name": "London",
+    "country": "United Kingdom",
+    "capital": false,
+    "location": {
+      "lat": 51.509865,
+      "long": -0.118092
+    }
+  }
+]

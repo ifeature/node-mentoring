@@ -3,6 +3,7 @@
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const Sequelize = require('sequelize');
+const mongoose = require('mongoose');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const FacebookStrategy = require('passport-facebook').Strategy;
@@ -12,7 +13,54 @@ const requireAuth = require('../middlewares/requireAuth');
 const products = require('../products.json');
 const users = require('../users.json');
 
-console.log('??????? ', process.env);
+mongoose.connect('mongodb://172.17.0.4/mydb');
+
+const db = mongoose.connection;
+
+db.once('open', () => {
+    console.log('Connection to mongo has been established successfully.');
+});
+
+const citySchema = mongoose.Schema({
+    name: String,
+    country: String,
+    capital: {
+        type: Boolean,
+        validate: {
+            validator: function(v) {
+                console.log('????? ', String(v));
+                console.log('???????????  ', v);
+                return String(v) === 'true' || String(v) === 'false';
+            },
+            message: '{VALUE} is not a capital!'
+        },
+        required: [true, 'capital is required']
+    },
+    location: {
+        lat: Number,
+        long: Number,
+    }
+}, { collection: 'cities' });
+
+const userSchema = mongoose.Schema({
+    email: String,
+    username: String,
+});
+
+const productSchema = mongoose.Schema({
+   reviews: [
+       {
+           author: String,
+           review: String,
+       }
+   ]
+});
+
+const UserModel = mongoose.model('User', userSchema);
+const ProductModel = mongoose.model('Product', productSchema);
+const CityModel = mongoose.model('City', citySchema);
+
+console.log('PROCESS.ENV ', process.env);
 
 const sequelize = new Sequelize('postgres://bob:mypass@172.17.0.2:5432/mydb');
 const sync = () => sequelize.sync({force: true});
@@ -33,6 +81,7 @@ const Review = sequelize.define('Review', {
 Review.belongsTo(Product); // foreignKey = ProductId
 Review.belongsTo(User); // foreignKey = UserId
 Product.hasMany(Review);
+User.hasMany(Review);
 
 const seed = () => {
     return sync().then(() => {
@@ -75,7 +124,7 @@ seed();
 
 sequelize.authenticate()
     .then(() => {
-        console.log('Connection has been established successfully.');
+        console.log('Connection to postgres has been established successfully.');
     });
 
 const user = {
@@ -239,6 +288,26 @@ module.exports = (router) => {
         }).then(review => {
             res.json(review);
         });
+    });
+
+    router.get('/api/cities', (req, res, next) => {
+        CityModel.aggregate([ { $sample: { size: 1 } } ], (err, result) => { // ????
+            console.log('123132', result);
+
+            // demonstrate validation
+            const city = new CityModel({ name: 77777});
+            // const error = city.validateSync();
+            city.save();
+            // console.log(error);
+
+           res.json(result);
+        });
+
+
+        // CityModel.find({}, (err, result) => {
+        //     console.log('123132', result);
+        //     res.json(result);
+        // });
     });
 
     return router;

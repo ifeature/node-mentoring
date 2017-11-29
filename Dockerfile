@@ -1,5 +1,5 @@
 FROM node:8.4.0
-LABEL maintainer="ifeatur@yandex.ru"
+LABEL maintainer="ifeature@yandex.ru"
 
 RUN mkdir -p /usr/src/app/
 WORKDIR /usr/src/app
